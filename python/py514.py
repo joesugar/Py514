@@ -115,7 +115,7 @@ class Py514(object):
                 except:
                     pass
             if (read != value):
-                raise ValueError, "Error writing to register " + str(reg_number) + "." 
+                raise ValueError("Error writing to register " + str(reg_number) + ".") 
 
         return
     
@@ -234,11 +234,11 @@ class Py514(object):
         '''
         # Get the current value of m
         #
-        reg05 = read_from_register(self.__REG_M_FRAC1)
-        reg06 = read_from_register(self.__REG_M_FRAC2)
-        reg07 = read_from_register(self.__REG_M_FRAC3)
-        reg08 = read_from_register(self.__REG_M_INT_FRAC)
-        reg09 = read_from_register(self.__REG_M_INT)
+        reg05 = self.read_from_register(self.__REG_M_FRAC1)
+        reg06 = self.read_from_register(self.__REG_M_FRAC2)
+        reg07 = self.read_from_register(self.__REG_M_FRAC3)
+        reg08 = self.read_from_register(self.__REG_M_INT_FRAC)
+        reg09 = self.read_from_register(self.__REG_M_INT)
         
         m_frac = ((reg08 & 0x1F) << 24) + (reg07 << 16) + (reg06 << 8) + (reg05 << 0)
         m_int  = ((reg08 >> 5) & 0x07) + ((reg09 & 0x1F) << 3)
@@ -262,15 +262,17 @@ class Py514(object):
             reg08 = (reg08 << 5) + ((int(m_int) >> 24) & 0x001F)
             reg09 = (int(m_int)  >> 3) & 0x003F  
 
-            write_to_register(self.__REG_M_FRAC1, reg05)
-            write_to_register(self.__REG_M_FRAC2, reg06)
-            write_to_register(self.__REG_M_FRAC3, reg07)
-            write_to_register(self.__REG_M_INT_FRAC, reg08)
-            write_to_register(self.__REG_M_INT, reg09)    
+            self.write_to_register(self.__REG_M_FRAC1, reg05)
+            self.write_to_register(self.__REG_M_FRAC2, reg06)
+            self.write_to_register(self.__REG_M_FRAC3, reg07)
+            self.write_to_register(self.__REG_M_INT_FRAC, reg08)
+            self.write_to_register(self.__REG_M_INT, reg09)    
         else:
             # Values don't match.  Raise the exception.
             #
-            raise ValueError("Expected m value does not match that read from clock")
+            raise ValueError(\
+                "Expected m value of ("+ str(self.__m_int) + ", " + str(self.__m_frac) + ") " + \
+                "does not match value of (" + str(m_int) + ", " + str(m_frac) + ") read from clock")
 
         return      
 
@@ -370,7 +372,6 @@ if __name__ == "__main__":
     #
     parser = argparse.ArgumentParser(description='Set the frequency of an Si514 clock')
     parser.add_argument('-f', dest='freq', nargs=1, type=int, help='frequency in Hz')
-    parser.add_argument("-s", action='store_false', help='increase output verbosity')
     args = parser.parse_args()
 
     # Only a single frequency argument.  If it's not given go to a 
@@ -383,6 +384,7 @@ if __name__ == "__main__":
 
     if (not(args.freq == None)):
         freq = args.freq[0]
+        sys.stdout.write("Setting clock to frequency of " + str(freq) + "\r\n")
     else:
         sys.stdout.write("Using default frequency of " + str(freq) + "\r\n")
 
@@ -394,22 +396,12 @@ if __name__ == "__main__":
                          "Hz\n\r")
         sys.exit()
 
-    # Flag to indicate whether to use the large or small frequency
-    # change algorithm.
-    #
-    freqLargeAlgo = True
-    if (not(args.s == None)):
-        freqLargeAlog = False
-
     # Set the frequency.  If there's an error print it and exit.
     #
     try:
         i2c = i2cpy.core.Py2CStick(deviceAddress = 0x55, delay=10)
         py514 = Py514(i2c)
-        if (freqLargeAlgo):
-            py514.set_freq_large(freq)
-        else:
-            py514.set_freq_small(freq)
+        py514.set_freq_large(freq)
     except Exception, e:
         sys.stderr.write("Error: " + str(e) + "\r\n")
         sys.exit()
